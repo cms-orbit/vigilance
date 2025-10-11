@@ -1,0 +1,32 @@
+{
+    "name": "cms-orbit/vigilance",
+    "description": "Laravel 서버 모니터링 에이전트 패키지",
+    "type": "library",
+    "license": "MIT",
+    "authors": [
+        {
+            "name": "CMS-Orbit Team",
+            "email": "support@cms-orbit.com"
+        }
+    ],
+    "require": {
+        "php": "^8.2",
+        "illuminate/support": "^11.0",
+        "guzzlehttp/guzzle": "^7.0"
+    },
+    "autoload": {
+        "psr-4": {
+            "CmsOrbit\\Vigilance\\": "src/"
+        }
+    },
+    "extra": {
+        "laravel": {
+            "providers": [
+                "CmsOrbit\\Vigilance\\VigilanceServiceProvider"
+            ]
+        }
+    },
+    "minimum-stability": "stable",
+    "prefer-stable": true
+}
+

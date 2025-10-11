@@ -1,0 +1,165 @@
+# Vigilance - Laravel 서버 모니터링 에이전트
+
+Vigilance는 Laravel 프로젝트에 설치되어 시스템 상태를 수집하고 1분마다 Sentinel-Hub로 전송하는 경량 모니터링 에이전트입니다.
+
+## 특징
+
+- 🔍 **실시간 시스템 모니터링**: CPU, 메모리, 디스크 사용량 자동 수집
+- 📊 **프로세스 모니터링**: 메모리를 많이 사용하는 프로세스 추적
+- 🚨 **오류 로그 수집**: Laravel 로그 파일에서 오류를 자동으로 감지하고 중복 제거
+- 🔄 **자동 재시도**: 전송 실패 시 지수 백오프 기반 재시도
+- 🖥️ **크로스 플랫폼**: Linux 및 Windows 지원
+- ⚡ **경량 설계**: 시스템 리소스 최소 사용
+
+## 요구사항
+
+- PHP 8.2 이상
+- Laravel 11.0 이상
+- Guzzle HTTP Client 7.0 이상
+
+## 설치
+
+### 1. Composer를 통한 패키지 설치
+
+```bash
+composer require cms-orbit/vigilance
+```
+
+### 2. 환경 설정
+
+`.env` 파일에 Sentinel-Hub URL을 추가하세요:
+
+```env
+SENTINEL_HUB_URL=https://sentinel-hub.amuz.co.kr
+```
+
+**참고:** 
+- 서버 UUID(`VIGILANCE_SERVER_ID`)는 자동으로 생성됩니다.
+- 스케줄러는 자동으로 등록됩니다.
+- 1분마다 자동으로 서버 상태를 전송합니다.
+
+### 3. 크론 작업 설정 (서버에서 한 번만 설정)
+
+Laravel 스케줄러가 작동하려면 서버에 크론 작업을 추가해야 합니다:
+
+```bash
+* * * * * cd /path-to-your-project && php artisan schedule:run >> /dev/null 2>&1
+```
+
+## 설정
+
+`config/vigilance.php` 파일에서 다양한 설정을 조정할 수 있습니다:
+
+```php
+return [
+    // Sentinel-Hub 도메인 (API 엔드포인트 경로는 자동 추가됨)
+    'base_url' => env('SENTINEL_HUB_URL', 'http://localhost'),
+    
+    // 서버 UUID
+    'server_uuid' => env('VIGILANCE_SERVER_ID', ''),
+    
+    // 모니터링할 디스크 경로
+    'disk_paths' => [
+        '/',
+    ],
+    
+    // 모니터링할 로그 파일
+    'log_monitor_paths' => [
+        storage_path('logs/laravel.log'),
+    ],
+    
+    // 재시도 설정
+    'retry' => [
+        'max_attempts' => 3,
+        'initial_delay' => 1,
+        'max_delay' => 60,
+    ],
+    
+    // HTTP 타임아웃 (초)
+    'timeout' => 10,
+];
+```
+
+## 사용법
+
+### 자동 모니터링
+
+패키지 설치 후 아무 작업 없이 자동으로 1분마다 서버 상태가 전송됩니다.
+
+### 수동 보고서 전송 (테스트용)
+
+```bash
+php artisan vigilance:report
+```
+
+### 전송 데이터 구조
+
+Vigilance는 다음 형식의 JSON 데이터를 Sentinel-Hub로 전송합니다:
+
+```json
+{
+  "uuid": "서버 고유 UUID",
+  "reported_at": "2025-10-10T12:00:00+00:00",
+  "referer": "http://example.com",
+  "system_info": {
+    "os_name": "Linux",
+    "os_version": "Ubuntu 22.04 LTS",
+    "cpu_cores": 8,
+    "php_version": "8.3.0",
+    "laravel_version": "11.0.0"
+  },
+  "metrics": {
+    "cpu": {
+      "load_avg": [0.5, 0.6, 0.7],
+      "total_usage_percent": 25.5,
+      "core_details": []
+    },
+    "memory": {
+      "total_mb": 16384,
+      "used_mb": 8192,
+      "usage_percent": 50.0,
+      "process_details": [...]
+    },
+    "disks": [...],
+    "health_check": {
+      "db_connection": "ok",
+      "queue_status": "ok",
+      "message": "All systems operational"
+    }
+  },
+  "errors": [...]
+}
+```
+
+## 아키텍처
+
+### StatusGetter 상속 구조
+
+```
+AbstractStatusGetter (추상 클래스)
+├── LinuxStatusGetter
+└── WindowsStatusGetter
+```
+
+각 OS별 StatusGetter는 다음 메소드를 구현합니다:
+- `getCpuData()`: CPU 사용률 및 로드 에버리지
+- `getMemoryData()`: 메모리 사용량 및 프로세스 정보
+- `getDiskData()`: 디스크 사용량
+- `getSystemInfo()`: 시스템 환경 정보
+- `getHealthCheck()`: DB 연결 및 큐 상태 확인
+
+### LogMonitor
+
+로그 파일을 모니터링하고 오류를 수집합니다:
+- 중복 제거를 위한 해시 생성 (SHA256)
+- 1분 간격으로 발생한 동일 오류 카운팅
+- 메시지 요약 (200자 제한)
+
+## 라이선스
+
+MIT License
+
+## 지원
+
+문제가 발생하거나 기능 제안이 있으시면 GitHub Issues를 통해 알려주세요.
+
