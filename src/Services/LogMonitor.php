@@ -62,23 +62,55 @@ class LogMonitor
     }
 
     /**
+     * prefix에 매칭되는 로그 파일들을 찾습니다.
+     */
+    private function findLogFiles(): array
+    {
+        $files = [];
+
+        foreach ($this->logPrefixes as $prefix) {
+            // prefix.log 형태의 파일
+            $mainFile = $prefix . '.log';
+            if (file_exists($mainFile)) {
+                $files[] = $mainFile;
+            }
+
+            // prefix-*.log 형태의 파일들 (데일리 로그)
+            $pattern = $prefix . '-*.log';
+            $matchedFiles = glob($pattern);
+
+            if ($matchedFiles !== false) {
+                foreach ($matchedFiles as $file) {
+                    $files[] = $file;
+                }
+            }
+        }
+
+        return array_unique($files);
+    }
+
+    /**
      * 로그 파일을 파싱하여 오류 엔트리를 추출합니다.
      */
     private function parseLogFile(string $logPath): array
     {
         $entries = [];
-        $content = @file_get_contents($logPath);
 
-        if ($content === false) {
+        // 파일 크기 확인 (10MB 이상이면 tail 사용)
+        $fileSize = @filesize($logPath);
+        if ($fileSize === false) {
             return $entries;
         }
 
-        // 마지막 수정 시간 확인 (1분 이내의 로그만 처리)
-        $lastModified = filemtime($logPath);
-        if ($lastModified === false || time() - $lastModified > $this->checkInterval) {
-            // 파일이 최근에 수정되지 않았으면 최근 N줄만 읽기
-            $lines = $this->getLastLines($logPath, 100);
+        if ($fileSize > 10 * 1024 * 1024) {
+            // 큰 파일은 tail로 최근 1000줄만 읽기
+            $lines = $this->getTailLines($logPath, 1000);
         } else {
+            // 작은 파일은 전체 읽기
+            $content = @file_get_contents($logPath);
+            if ($content === false) {
+                return $entries;
+            }
             $lines = explode("\n", $content);
         }
 
@@ -100,38 +132,18 @@ class LogMonitor
     }
 
     /**
-     * 파일의 마지막 N줄을 읽습니다.
+     * tail 명령어를 사용하여 파일의 마지막 N줄을 읽습니다.
      */
-    private function getLastLines(string $file, int $lines): array
+    private function getTailLines(string $file, int $lines): array
     {
-        $handle = @fopen($file, 'r');
-        if (!$handle) {
+        $command = "tail -n {$lines} " . escapeshellarg($file) . " 2>/dev/null";
+        $output = shell_exec($command);
+
+        if ($output === null) {
             return [];
         }
 
-        $buffer = [];
-        $linecounter = 0;
-
-        fseek($handle, -1, SEEK_END);
-        $pos = ftell($handle);
-
-        while ($linecounter < $lines && $pos > 0) {
-            $char = fgetc($handle);
-            if ($char === "\n") {
-                $linecounter++;
-                if ($linecounter < $lines) {
-                    $line = stream_get_line($handle, 0, "\n");
-                    if ($line !== false) {
-                        $buffer[] = strrev($line);
-                    }
-                }
-            }
-            $pos--;
-            fseek($handle, $pos, SEEK_SET);
-        }
-
-        fclose($handle);
-        return array_reverse($buffer);
+        return explode("\n", trim($output));
     }
 
     /**
@@ -139,7 +151,7 @@ class LogMonitor
      */
     private function isErrorLine(string $line): bool
     {
-        return preg_match('/\.(ERROR|CRITICAL|ALERT|EMERGENCY)\]/', $line) === 1;
+        return preg_match('/\.(ERROR|CRITICAL|ALERT|EMERGENCY):/', $line) === 1;
     }
 
     /**
@@ -157,12 +169,31 @@ class LogMonitor
             $file = 'unknown';
             $lineNum = 0;
 
-            if (preg_match('/in\s+(.+\.php)\s+on\s+line\s+(\d+)/', $message, $fileMatches)) {
+            // 패턴 1: "at /path/to/file.php:123)" (exception 메시지)
+            if (preg_match('/at\s+([\/\\\\].+?\.php):(\d+)\)?/', $message, $fileMatches)) {
                 $file = $fileMatches[1];
                 $lineNum = (int) $fileMatches[2];
-            } elseif (preg_match('/(.+\.php):(\d+)/', $message, $fileMatches)) {
+            }
+            // 패턴 2: "in /path/to/file.php on line 123"
+            elseif (preg_match('/in\s+([\/\\\\].+?\.php)\s+on\s+line\s+(\d+)/', $message, $fileMatches)) {
                 $file = $fileMatches[1];
                 $lineNum = (int) $fileMatches[2];
+            }
+            // 패턴 3: 일반 경로 "/path/to/file.php:123"
+            elseif (preg_match('/([\/\\\\].+?\.php):(\d+)/', $message, $fileMatches)) {
+                $file = $fileMatches[1];
+                $lineNum = (int) $fileMatches[2];
+            }
+
+            // file 경로를 항상 상대 경로로 변환
+            $basePath = base_path();
+            if (str_starts_with($file, $basePath)) {
+                $file = substr($file, strlen($basePath) + 1);
+            }
+
+            // 최대 길이 제한 (DB 필드 크기)
+            if (strlen($file) > 250) {
+                $file = '...' . substr($file, -247);
             }
 
             return [

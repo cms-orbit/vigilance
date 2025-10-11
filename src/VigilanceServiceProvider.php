@@ -27,6 +27,9 @@ class VigilanceServiceProvider extends ServiceProvider
      */
     public function boot(): void
     {
+        // UUID 자동 생성 (없는 경우)
+        $this->ensureServerUuid();
+
         if ($this->app->runningInConsole()) {
             // 설정 파일 발행
             $this->publishes([
@@ -47,9 +50,6 @@ class VigilanceServiceProvider extends ServiceProvider
                     ->runInBackground();
             });
         }
-
-        // UUID 자동 생성 (없는 경우)
-        $this->ensureServerUuid();
     }
 
     /**

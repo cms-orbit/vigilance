@@ -69,7 +69,9 @@ class ReportService
     private function collectPayload(): array
     {
         $statusGetter = AbstractStatusGetter::create();
-        $logMonitor = new LogMonitor(config('vigilance.log_monitor_paths', []));
+        $logMonitor = new LogMonitor(config('vigilance.log_monitor_prefixes', []));
+
+        $errors = $logMonitor->collectErrors();
 
         $payload = [
             'uuid' => $this->serverUuid,
@@ -82,7 +84,7 @@ class ReportService
                 'disks' => $statusGetter->getDiskData(config('vigilance.disk_paths', ['/'])),
                 'health_check' => $statusGetter->getHealthCheck(),
             ],
-            'errors' => $logMonitor->collectErrors(),
+            'errors' => $errors,
         ];
 
         return $payload;
