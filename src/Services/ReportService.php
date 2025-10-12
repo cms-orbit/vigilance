@@ -73,6 +73,13 @@ class ReportService
 
         $errors = $logMonitor->collectErrors();
 
+        $httpUrls = config('vigilance.http_health_check_urls', []);
+        $httpHealthChecks = [];
+        
+        foreach ($httpUrls as $url) {
+            $httpHealthChecks[] = $statusGetter->getHttpHealthCheck($url);
+        }
+
         $payload = [
             'uuid' => $this->serverUuid,
             'reported_at' => now()->toIso8601String(),
@@ -82,7 +89,9 @@ class ReportService
                 'cpu' => $statusGetter->getCpuData(),
                 'memory' => $statusGetter->getMemoryData(),
                 'disks' => $statusGetter->getDiskData(config('vigilance.disk_paths', ['/'])),
+                'network' => $statusGetter->getNetworkData(),
                 'health_check' => $statusGetter->getHealthCheck(),
+                'http_health_checks' => $httpHealthChecks,
             ],
             'errors' => $errors,
         ];

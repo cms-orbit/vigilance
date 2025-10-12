@@ -46,7 +46,7 @@ class LinuxStatusGetter extends AbstractStatusGetter
         return [
             'total_mb' => $this->bytesToMb($total * 1024),
             'used_mb' => $this->bytesToMb($used * 1024),
-            'usage_percent' => $usagePercent,
+            'used_percent' => $usagePercent,
             'process_details' => $processDetails,
         ];
     }
@@ -74,14 +74,50 @@ class LinuxStatusGetter extends AbstractStatusGetter
             $usagePercent = $total > 0 ? round(($used / $total) * 100, 2) : 0.0;
 
             $disks[] = [
-                'path' => $path,
-                'total_gb' => $this->bytesToGb((int) $total),
-                'used_gb' => $this->bytesToGb((int) $used),
-                'usage_percent' => $usagePercent,
+                'mount' => $path,
+                'total_mb' => $this->bytesToMb((int) $total),
+                'used_mb' => $this->bytesToMb((int) $used),
+                'used_percent' => $usagePercent,
             ];
         }
 
         return $disks;
+    }
+
+    /**
+     * 네트워크 데이터를 수집합니다.
+     */
+    public function getNetworkData(): array
+    {
+        $netDev = @file_get_contents('/proc/net/dev');
+        
+        if ($netDev === false) {
+            return [
+                'rx_bytes' => 0,
+                'tx_bytes' => 0,
+                'rx_rate_mbps' => 0.0,
+                'tx_rate_mbps' => 0.0,
+            ];
+        }
+
+        $lines = explode("\n", $netDev);
+        $totalRx = 0;
+        $totalTx = 0;
+
+        foreach ($lines as $line) {
+            // lo (loopback) 제외, eth, ens, enp로 시작하는 인터페이스만
+            if (preg_match('/^\s*(eth|ens|enp|wlan)[\d\w]+:\s*(\d+)\s+\d+\s+\d+\s+\d+\s+\d+\s+\d+\s+\d+\s+\d+\s+(\d+)/', $line, $matches)) {
+                $totalRx += (int) $matches[2];
+                $totalTx += (int) $matches[3];
+            }
+        }
+
+        return [
+            'rx_bytes' => $totalRx,
+            'tx_bytes' => $totalTx,
+            'rx_rate_mbps' => round($totalRx / 1024 / 1024, 2),
+            'tx_rate_mbps' => round($totalTx / 1024 / 1024, 2),
+        ];
     }
 
     /**

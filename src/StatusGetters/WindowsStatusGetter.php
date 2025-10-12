@@ -38,7 +38,7 @@ class WindowsStatusGetter extends AbstractStatusGetter
             return [
                 'total_mb' => 0,
                 'used_mb' => 0,
-                'usage_percent' => 0.0,
+                'used_percent' => 0.0,
                 'process_details' => [],
             ];
         }
@@ -52,7 +52,7 @@ class WindowsStatusGetter extends AbstractStatusGetter
         return [
             'total_mb' => $this->bytesToMb($total * 1024),
             'used_mb' => $this->bytesToMb($used * 1024),
-            'usage_percent' => $usagePercent,
+            'used_percent' => $usagePercent,
             'process_details' => $this->getTopMemoryProcessesWindows(5),
         ];
     }
@@ -80,10 +80,10 @@ class WindowsStatusGetter extends AbstractStatusGetter
             $usagePercent = $total > 0 ? round(($used / $total) * 100, 2) : 0.0;
 
             $disks[] = [
-                'path' => $path,
-                'total_gb' => $this->bytesToGb((int) $total),
-                'used_gb' => $this->bytesToGb((int) $used),
-                'usage_percent' => $usagePercent,
+                'mount' => $path,
+                'total_mb' => $this->bytesToMb((int) $total),
+                'used_mb' => $this->bytesToMb((int) $used),
+                'used_percent' => $usagePercent,
             ];
         }
 

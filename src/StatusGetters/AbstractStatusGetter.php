@@ -38,13 +38,72 @@ abstract class AbstractStatusGetter
      *
      * @param array<string> $paths
      * @return array<array{
-     *     path: string,
-     *     total_gb: float,
-     *     used_gb: float,
-     *     usage_percent: float
+     *     mount: string,
+     *     total_mb: int,
+     *     used_mb: int,
+     *     used_percent: float
      * }>
      */
     abstract public function getDiskData(array $paths): array;
+
+    /**
+     * 네트워크 데이터를 수집합니다.
+     *
+     * @return array{
+     *     rx_bytes: int,
+     *     tx_bytes: int,
+     *     rx_rate_mbps: float,
+     *     tx_rate_mbps: float
+     * }
+     */
+    abstract public function getNetworkData(): array;
+
+    /**
+     * HTTP 헬스 체크를 수행합니다.
+     *
+     * @param string $url
+     * @return array{
+     *     url: string,
+     *     status: string,
+     *     response_time_ms: int,
+     *     status_code: int|null
+     * }
+     */
+    public function getHttpHealthCheck(string $url): array
+    {
+        $startTime = microtime(true);
+        $result = [
+            'url' => $url,
+            'status' => 'fail',
+            'response_time_ms' => 0,
+            'status_code' => null,
+        ];
+
+        try {
+            $ch = curl_init($url);
+            curl_setopt($ch, CURLOPT_RETURNTRANSFER, true);
+            curl_setopt($ch, CURLOPT_TIMEOUT, 10);
+            curl_setopt($ch, CURLOPT_FOLLOWLOCATION, true);
+            curl_setopt($ch, CURLOPT_SSL_VERIFYPEER, false);
+            
+            $response = curl_exec($ch);
+            $statusCode = curl_getinfo($ch, CURLINFO_HTTP_CODE);
+            $endTime = microtime(true);
+            
+            $result['response_time_ms'] = (int) (($endTime - $startTime) * 1000);
+            $result['status_code'] = (int) $statusCode;
+            
+            if ($response !== false && $statusCode >= 200 && $statusCode < 400) {
+                $result['status'] = 'ok';
+            }
+            
+            curl_close($ch);
+        } catch (\Exception $e) {
+            $result['status'] = 'error';
+        }
+
+        return $result;
+    }
 
     /**
      * 시스템 정보를 수집합니다.
@@ -207,7 +266,7 @@ abstract class AbstractStatusGetter
     /**
      * 바이트를 GB로 변환합니다.
      */
-    protected function bytesToGb(int $bytes): float
+    protected function bytesToMb(int $bytes): float
     {
         return round($bytes / 1024 / 1024 / 1024, 2);
     }

@@ -57,7 +57,7 @@ class MacStatusGetter extends AbstractStatusGetter
         return [
             'total_mb' => $this->bytesToMb($totalBytes),
             'used_mb' => $this->bytesToMb($usedBytes),
-            'usage_percent' => $usagePercent,
+            'used_percent' => $usagePercent,
             'process_details' => $processDetails,
         ];
     }
@@ -85,14 +85,40 @@ class MacStatusGetter extends AbstractStatusGetter
             $usagePercent = $total > 0 ? round(($used / $total) * 100, 2) : 0.0;
 
             $disks[] = [
-                'path' => $path,
-                'total_gb' => $this->bytesToGb((int) $total),
-                'used_gb' => $this->bytesToGb((int) $used),
-                'usage_percent' => $usagePercent,
+                'mount' => $path,
+                'total_mb' => $this->bytesToMb((int) $total),
+                'used_mb' => $this->bytesToMb((int) $used),
+                'used_percent' => $usagePercent,
             ];
         }
 
         return $disks;
+    }
+
+    /**
+     * 네트워크 데이터를 수집합니다.
+     */
+    public function getNetworkData(): array
+    {
+        $output = $this->executeCommand('netstat -ib | grep -e "en0" -e "en1"');
+        $lines = explode("\n", $output);
+        
+        $totalRx = 0;
+        $totalTx = 0;
+        
+        foreach ($lines as $line) {
+            if (preg_match('/\s+(\d+)\s+\d+\s+\d+\s+(\d+)\s+\d+\s+\d+/', $line, $matches)) {
+                $totalRx += (int) $matches[1];
+                $totalTx += (int) $matches[2];
+            }
+        }
+
+        return [
+            'rx_bytes' => $totalRx,
+            'tx_bytes' => $totalTx,
+            'rx_rate_mbps' => round($totalRx / 1024 / 1024, 2),
+            'tx_rate_mbps' => round($totalTx / 1024 / 1024, 2),
+        ];
     }
 
     /**
