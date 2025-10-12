@@ -91,6 +91,48 @@ class WindowsStatusGetter extends AbstractStatusGetter
     }
 
     /**
+     * 네트워크 데이터를 수집합니다.
+     */
+    public function getNetworkData(): array
+    {
+        $command = 'powershell "Get-NetAdapterStatistics | Select-Object Name, ReceivedBytes, SentBytes | ConvertTo-Json"';
+        $output = $this->executeCommand($command);
+        
+        $data = json_decode($output, true);
+        if (!$data) {
+            return [
+                'rx_bytes' => 0,
+                'tx_bytes' => 0,
+                'rx_rate_mbps' => 0.0,
+                'tx_rate_mbps' => 0.0,
+            ];
+        }
+
+        // 단일 결과인 경우 배열로 감싸기
+        if (isset($data['Name'])) {
+            $data = [$data];
+        }
+
+        $totalRx = 0;
+        $totalTx = 0;
+
+        foreach ($data as $adapter) {
+            // 가상 어댑터 제외
+            if (isset($adapter['Name']) && !preg_match('/(VirtualBox|VMware|Hyper-V|Loopback)/i', $adapter['Name'])) {
+                $totalRx += (int) ($adapter['ReceivedBytes'] ?? 0);
+                $totalTx += (int) ($adapter['SentBytes'] ?? 0);
+            }
+        }
+
+        return [
+            'rx_bytes' => $totalRx,
+            'tx_bytes' => $totalTx,
+            'rx_rate_mbps' => round($totalRx / 1024 / 1024, 2),
+            'tx_rate_mbps' => round($totalTx / 1024 / 1024, 2),
+        ];
+    }
+
+    /**
      * 시스템 정보를 수집합니다.
      */
     public function getSystemInfo(): array

@@ -85,18 +85,18 @@ abstract class AbstractStatusGetter
             curl_setopt($ch, CURLOPT_TIMEOUT, 10);
             curl_setopt($ch, CURLOPT_FOLLOWLOCATION, true);
             curl_setopt($ch, CURLOPT_SSL_VERIFYPEER, false);
-            
+
             $response = curl_exec($ch);
             $statusCode = curl_getinfo($ch, CURLINFO_HTTP_CODE);
             $endTime = microtime(true);
-            
+
             $result['response_time_ms'] = (int) (($endTime - $startTime) * 1000);
             $result['status_code'] = (int) $statusCode;
-            
+
             if ($response !== false && $statusCode >= 200 && $statusCode < 400) {
                 $result['status'] = 'ok';
             }
-            
+
             curl_close($ch);
         } catch (\Exception $e) {
             $result['status'] = 'error';
@@ -266,7 +266,7 @@ abstract class AbstractStatusGetter
     /**
      * 바이트를 GB로 변환합니다.
      */
-    protected function bytesToMb(int $bytes): float
+    protected function bytesToGb(int $bytes): float
     {
         return round($bytes / 1024 / 1024 / 1024, 2);
     }
