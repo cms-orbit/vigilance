@@ -75,9 +75,21 @@ class ReportService
 
         $httpUrls = config('vigilance.http_health_check_urls', []);
         $httpHealthChecks = [];
-        
+
         foreach ($httpUrls as $url) {
-            $httpHealthChecks[] = $statusGetter->getHttpHealthCheck($url);
+            try {
+                $httpHealthChecks[] = $statusGetter->getHttpHealthCheck($url);
+            } catch (\Exception $e) {
+                Log::warning('HTTP health check failed', ['url' => $url, 'error' => $e->getMessage()]);
+            }
+        }
+
+        // 네트워크 데이터 수집
+        $networkData = null;
+        try {
+            $networkData = $statusGetter->getNetworkData();
+        } catch (\Exception $e) {
+            Log::warning('Network data collection failed', ['error' => $e->getMessage()]);
         }
 
         $payload = [
@@ -89,7 +101,7 @@ class ReportService
                 'cpu' => $statusGetter->getCpuData(),
                 'memory' => $statusGetter->getMemoryData(),
                 'disks' => $statusGetter->getDiskData(config('vigilance.disk_paths', ['/'])),
-                'network' => $statusGetter->getNetworkData(),
+                'network' => $networkData,
                 'health_check' => $statusGetter->getHealthCheck(),
                 'http_health_checks' => $httpHealthChecks,
             ],
