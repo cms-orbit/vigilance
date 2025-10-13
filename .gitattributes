@@ -1,0 +1,6 @@
+* text=auto
+
+# Exclude from archive
+/.gitattributes export-ignore
+/.gitignore export-ignore
+
