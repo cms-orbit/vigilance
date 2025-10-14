@@ -90,7 +90,7 @@ class LinuxStatusGetter extends AbstractStatusGetter
     public function getNetworkData(): array
     {
         $netDev = @file_get_contents('/proc/net/dev');
-        
+
         if ($netDev === false) {
             return [
                 'rx_bytes' => 0,

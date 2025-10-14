@@ -14,6 +14,7 @@ class ReportService
     private Client $client;
     private string $baseUrl;
     private string $serverUuid;
+    private ?int $groupId;
     private int $timeout;
     private array $retryConfig;
 
@@ -23,6 +24,7 @@ class ReportService
     {
         $this->baseUrl = config('vigilance.base_url');
         $this->serverUuid = config('vigilance.server_uuid');
+        $this->groupId = config('vigilance.group_id');
         $this->timeout = config('vigilance.timeout', 10);
         $this->retryConfig = config('vigilance.retry', [
             'max_attempts' => 3,
@@ -107,6 +109,11 @@ class ReportService
             ],
             'errors' => $errors,
         ];
+
+        // group_id가 설정된 경우 추가
+        if ($this->groupId !== null) {
+            $payload['group_id'] = $this->groupId;
+        }
 
         return $payload;
     }

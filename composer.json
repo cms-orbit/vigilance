@@ -1,6 +1,6 @@
 {
     "name": "cms-orbit/vigilance",
-    "version": "1.1.2",
+    "version": "1.2.0",
     "description": "Laravel 서버 모니터링 에이전트 패키지",
     "type": "library",
     "license": "MIT",
