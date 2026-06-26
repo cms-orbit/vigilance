@@ -29,7 +29,7 @@ class ReportCommand extends Command
     public function handle(ReportService $reportService): int
     {
         if (!$reportService->validateUuid()) {
-            $this->error('Server UUID가 설정되지 않았습니다. vigilance:install 명령어를 먼저 실행하세요.');
+            $this->error('Server UUID가 설정되지 않았습니다. .env 파일에 VIGILANCE_SERVER_ID 값을 설정하거나, php artisan config:clear 후 다시 실행하세요.');
             return self::FAILURE;
         }
 
