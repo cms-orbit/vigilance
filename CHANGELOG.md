@@ -5,6 +5,22 @@
 형식은 [Keep a Changelog](https://keepachangelog.com/ko/1.0.0/)를 따르며,
 이 프로젝트는 [Semantic Versioning](https://semver.org/lang/ko/)를 준수합니다.
 
+## [1.3.0] - 2026-06-26
+
+### Added
+- Laravel 12 지원 추가
+- Laravel 13 지원 추가
+- PHP 8.5 호환 범위 추가
+
+### Changed
+- `illuminate/support` 지원 범위를 `^9.0|^10.0|^11.0|^12.0|^13.0`으로 확장
+- PHP 지원 범위를 `>=8.0 <8.6`으로 명시
+- README 호환성 매트릭스를 Laravel 13까지 업데이트
+
+### Notes
+- 패키지 네임스페이스, ServiceProvider, Artisan 명령어 이름은 변경되지 않았습니다 (`CmsOrbit\Vigilance\VigilanceServiceProvider`, `vigilance:report`).
+- Laravel 9 / 10 / 11 와의 하위 호환성은 그대로 유지됩니다.
+
 ## [1.1.2] - 2025-10-13
 
 ### Added
